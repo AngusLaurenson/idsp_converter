@@ -1,0 +1,24 @@
+Acute Diarrheal Disease
+Acute Encephalitis Syndrome
+Acute Flaccid Paralysis
+Acute Respiratory Infection
+Any Other State Specific Disease
+Bacillary Dysentery
+Chicken Pox
+Chikungunya
+Dengue
+Diphtheria
+Dog Bite
+Enteric Fever
+Fever Of Unknown Origin
+Leptospirosis
+Malaria
+Measles
+Meningitis
+Pertussis
+Pneumonia
+Snake Bite
+Unusual Syndromes Not Captured Above
+Viral Hepatitis
+Food Poisoning
+Cholera
