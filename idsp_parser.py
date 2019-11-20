@@ -24,7 +24,7 @@ def outbreak_parser(outbreak):
     ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments = "?"*10
 
     # easy to locate fields
-    ID_code = outbreak.split("_")[0]
+    ID_code = outbreak.split(" ")[0]
     status = re.findall("Under \w+",outbreak)[0]
     comments = re.findall("((?<="+status+").*)", outbreak)[0]
 
