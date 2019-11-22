@@ -7,8 +7,13 @@ Usage: This script is intended to be run as command line tool, i.e.
 
 >> python3 idsp_parser /path/to/txtfiles/*.txt
 
-Known issues: IDSP pdf files have different sections. One of them is updates about previously reported outbreaks. This generates duplicate reporting and the correct response is to drop the earlier records in favour of the updated record. Currently they are treated as separate outbreaks. Post 2016 the unique ID for the outbreak can be used. Pre 2016 a solution has yet to be invented and in both cases is yet to be implemented.
- + Solution can be implemented downstream, using pandas to compare rows for duplicates...
+Known issues:
+
+Follow up records of the same outbreak cause duplicate reporting. Can be dealth with in post 2016 records using the unique ID code. Solution can be implemented downstream, using pandas to compare rows for duplicates...
+
+State field missing when pdf has state cells merged across rows when multiple districts in that state have outbreaks in the same report. Can be dealth with downstream by taking the previous state or using the unique ID code.
+
+Districts missing in output. It is expected that the district list used does not contain all the possible outputs. Alternatively spelling differences might cause this. Soluions are improving the district list and fuzzy matching.
 
 Wishlist: pdftotext within this program, fuzzy matching to overcome spelling differences and error,
 
@@ -27,17 +32,21 @@ regex_pre_2016 = "(\d\.\s\w.*?)(?=\d\.\s)"
 def outbreak_parser(outbreak):
 
     # default values to account for missing values
-    ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments = "?"*10
+    ID_code, state, district, disease, cases, deaths, reporting_date, end_date, status, comments = "?"*10
 
     # easy to locate fields
-    ID_code = outbreak.split(" ")[0]
+    try:
+        ID_code = re.finall(regex_post_2016, outbreak)
+    except:
+        pass
+
     status = re.findall("Under \w+",outbreak)[0]
     comments = re.findall("((?<="+status+").*)", outbreak)[0]
 
     # start stop dates
-    dates = re.findall("\d\d[\.-]\d\d[\.-]\d\d", outbreak)
+    dates = re.findall("\d\d[/\.-]\d\d[/\.-]\d\d", outbreak)
     try:
-        start_date = dates[0]
+        reporting_date = dates[0]
     except:
         pass
     try:
@@ -66,7 +75,7 @@ def outbreak_parser(outbreak):
             disease = d
             break
 
-    return [ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments]
+    return [ID_code, state, district, disease, cases, deaths, reporting_date, end_date, status, comments]
 
 if __name__ == '__main__':
     # load a list of file names
@@ -109,7 +118,7 @@ if __name__ == '__main__':
 
     # Create a dataframe which contains all the outbreaks as rows
     # and all the data fields as columns
-    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "end_date", "status", "comments"])
+    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "reporting_date", "end_date", "status", "comments"])
 
     for i, raw in enumerate(tqdm(outbreaks_raw)):
         # this part accumulates a significant number of errors
