@@ -16,6 +16,7 @@ Notes: SOPs for strings is capitalised words as in .title() string method. Lead 
 """
 
 from fuzzywuzzy import fuzz
+import geopandas as gpd
 import pandas as pd
 import re
 import sys
@@ -66,9 +67,11 @@ def outbreak_parser(outbreak):
     except:
         pass
 
-    # use a fuzzy match to robustly get locations
-    state = fuzzy_match(state_names, outbreak)
-    district = fuzzy_match(district_names, outbreak)
+    # use a fuzzy match to robustly get state
+    state = fuzzy_match(state_district_dict.keys(), outbreak)
+    
+    # search only the districts within the state
+    district = fuzzy_match(state_district_dict[state], outbreak)
     
     # IDSP doctrine gives investigators freedom to record
     # diseases which they deem important. Therefore a
@@ -107,13 +110,21 @@ if __name__ == '__main__':
 
     print("total number of outbreaks", outbreaks_raw.__len__())
 
-    # states and districts as downloaded from
-    # https://gadm.org/download_country_v3.html
-    # new line delimited text files required
-    with open("state_names.txt","r") as f:
-        state_names = f.read().split("\n")
-    with open("district_names.txt","r") as f:
-        district_names = f.read().split("\n")
+    # try and create a dictionary of {state : [districts,]}
+    # for finding the districts.
+
+    IND_2 = gpd.read_file("gadm36_IND_2.shp")
+
+    state_district_dict = {}
+    for d in IND_2[['NAME_1','NAME_2']].values:
+        # built a dictionary of lists
+        # keys are states, values are its districts
+        try:
+            state_district_dict[d[0]].append(d[-1])
+        except:
+            state_district_dict[d[0]] = [d[-1]]
+    
+    # load list of diseases, not comprehensive
     with open("disease_names.txt","r") as f:
         disease_names = f.read().split("\n")
 
