@@ -15,6 +15,7 @@ Wishlist: pdftotext within this program, fuzzy matching to overcome spelling dif
 Notes: SOPs for strings is capitalised words as in .title() string method. Lead taken from the datasets themselves.
 """
 
+from fuzzywuzzy import fuzz
 import pandas as pd
 import re
 import sys
@@ -24,8 +25,23 @@ from tqdm import tqdm
 regex_post_2016 = "\w+/\w+/\d+/\d+/\d+"
 regex_pre_2016 = "(\d\.\s\w.*?)(?=\d\.\s)"
 
+def fuzzy_match(hypotheses, target):
+    # returns the hypothesis which best matches the target
+    match = []
+    
+    # build a list of (score, state) tuples
+    for h in hypotheses:
+        match.append((fuzz.token_set_ratio(h,target), h))
+        
+    # sort the list of tuples to take the state with highest score
+    match.sort()
+    return match[-1][-1]
+
 def outbreak_parser(outbreak):
 
+    # for validation, include raw outbreak line
+    raw_string = outbreak
+       
     # default values to account for missing values
     ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments = "?"*10
 
@@ -50,23 +66,21 @@ def outbreak_parser(outbreak):
     except:
         pass
 
-    # search through state, district and disease for matches.
-    for s in state_names:
-        if s in outbreak:
-            state = s
-            break
-
-    for d in district_names:
-        if d in outbreak:
-            district = d
-            break
-
+    # use a fuzzy match to robustly get locations
+    state = fuzzy_match(state_names, outbreak)
+    district = fuzzy_match(district_names, outbreak)
+    
+    # IDSP doctrine gives investigators freedom to record
+    # diseases which they deem important. Therefore a
+    # comprehensive list of diseases is impossible.
+    # However we are interested in Cholera not rare wildcards
+    
     for d in disease_names:
         if d in outbreak:
             disease = d
             break
 
-    return [ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments]
+    return [ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments, raw_string]
 
 if __name__ == '__main__':
     # load a list of file names
@@ -109,7 +123,7 @@ if __name__ == '__main__':
 
     # Create a dataframe which contains all the outbreaks as rows
     # and all the data fields as columns
-    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "end_date", "status", "comments"])
+    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "end_date", "status", "comments", "raw"])
 
     for i, raw in enumerate(tqdm(outbreaks_raw)):
         # this part accumulates a significant number of errors
