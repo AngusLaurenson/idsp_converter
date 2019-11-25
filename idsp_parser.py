@@ -44,7 +44,7 @@ def outbreak_parser(outbreak):
     raw_string = outbreak
        
     # default values to account for missing values
-    ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments = "?"*10
+    ID_code, state, district, disease, cases, deaths, start_date, report_date, status, comments = "?"*10
 
     # easy to locate fields
     ID_code = outbreak.split(" ")[0]
@@ -58,12 +58,12 @@ def outbreak_parser(outbreak):
     except:
         pass
     try:
-        end_date = dates[1]
+        report_date = dates[1]
     except:
         pass
 
     try:
-        cases, deaths = re.findall("(?<=\s)\d+[\s/\.-]\d+(?=\s)",outbreak)[0].split(" ")
+        cases, deaths = re.findall("(?<=\s)\d+\*?[\s/\.-]\d+\*?(?=\s)",outbreak)[0].split(" ")
     except:
         pass
 
@@ -83,7 +83,7 @@ def outbreak_parser(outbreak):
             disease = d
             break
 
-    return [ID_code, state, district, disease, cases, deaths, start_date, end_date, status, comments, raw_string]
+    return [ID_code, state, district, disease, cases, deaths, start_date, report_date, status, comments, raw_string]
 
 if __name__ == '__main__':
     # load a list of file names
@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
     # Create a dataframe which contains all the outbreaks as rows
     # and all the data fields as columns
-    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "end_date", "status", "comments", "raw"])
+    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "report_date", "status", "comments", "raw"])
 
     for i, raw in enumerate(tqdm(outbreaks_raw)):
         # this part accumulates a significant number of errors
