@@ -36,7 +36,7 @@ def outbreak_parser(outbreak):
 
     # easy to locate fields
     try:
-        ID_code = re.finall(regex_post_2016, outbreak)
+        ID_code = re.findall(regex_post_2016, outbreak)[0]
     except:
         pass
 
@@ -60,16 +60,20 @@ def outbreak_parser(outbreak):
         pass
 
     # search through state, district and disease for matches.
+    
     for s in state_names:
         if s in outbreak:
             state = s
             break
-
+    
     for d in district_names:
         if d in outbreak:
             district = d
             break
-
+            
+    if district == '?':
+        district = outbreak.split(' ')[1:4]
+    
     for d in disease_names:
         if d in outbreak:
             disease = d
