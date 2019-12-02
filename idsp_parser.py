@@ -29,11 +29,11 @@ regex_pre_2016 = "(\d\.\s\w.*?)(?=\d\.\s)"
 def fuzzy_match(hypotheses, target):
     # returns the hypothesis which best matches the target
     match = []
-    
+
     # build a list of (score, state) tuples
     for h in hypotheses:
         match.append((fuzz.token_set_ratio(h,target), h))
-        
+
     # sort the list of tuples to take the state with highest score
     match.sort()
     return match[-1][-1]
@@ -42,7 +42,7 @@ def outbreak_parser(outbreak):
 
     # for validation, include raw outbreak line
     raw_string = outbreak
-       
+
     # default values to account for missing values
     ID_code, state, district, disease, cases, deaths, start_date, report_date, status, comments = "?"*10
 
@@ -52,9 +52,11 @@ def outbreak_parser(outbreak):
     comments = re.findall("((?<="+status+").*)", outbreak)[0]
 
     # start stop dates
-    dates = re.findall("\d\d[\.-]\d\d[\.-]\d\d", outbreak)
+    dates = re.findall("\d+[/.-]\d+[/.-]\d+", outbreak)
+
     try:
-        start_date = dates[0]
+        # replace to help later to_datetime()
+        start_date = dates[0].replace('/','-')
     except:
         pass
     try:
@@ -69,15 +71,15 @@ def outbreak_parser(outbreak):
 
     # use a fuzzy match to robustly get state
     state = fuzzy_match(state_district_dict.keys(), outbreak)
-    
+
     # search only the districts within the state
     district = fuzzy_match(state_district_dict[state], outbreak)
-    
+
     # IDSP doctrine gives investigators freedom to record
     # diseases which they deem important. Therefore a
     # comprehensive list of diseases is impossible.
     # However we are interested in Cholera not rare wildcards
-    
+
     for d in disease_names:
         if d in outbreak:
             disease = d
@@ -92,7 +94,7 @@ if __name__ == '__main__':
     # create a list of strings, one for each outbreak
     # input string is broken up by matching the ID field
     outbreaks_raw = []
-    for txt_file in txt_files[:]:
+    for txt_file in tqdm(txt_files[:]):
         with open(txt_file,"r") as f:
             dump = f.read()
             dump = dump.replace("\n"," ")
@@ -123,7 +125,7 @@ if __name__ == '__main__':
             state_district_dict[d[0]].append(d[-1])
         except:
             state_district_dict[d[0]] = [d[-1]]
-    
+
     # load list of diseases, not comprehensive
     with open("disease_names.txt","r") as f:
         disease_names = f.read().split("\n")
