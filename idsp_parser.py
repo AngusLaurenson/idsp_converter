@@ -31,6 +31,7 @@ import pandas as pd
 import re
 import sys
 from tqdm import tqdm
+import os
 
 with open('err_log.txt','w') as f:
     f.write('# amateur log files for parsing errors')
@@ -100,7 +101,7 @@ def outbreak_parser(outbreak):
     return [ID_code, state, district, disease, cases, deaths, year, start_date, report_date, status, comments, raw_string]
 
 
-def get_format(fname, dump):
+def get_format(fname):
     # a function to obtain the epoch
 
     if 'pre_2016' in fname:
@@ -112,8 +113,16 @@ def get_format(fname, dump):
     else:
         return 1
 
+def list_files(source):
+    # works
+    matches = []
+    for root, dirnames, filenames in os.walk(source):
+        for filename in filenames:
+            if filename.endswith(('.txt')):
+                matches.append(os.path.join(root, filename))
+    return matches
 
-def extract_lines(txt_files):
+def extract_outbreaks(txt_files):
 
     # use regex to get only the essential information
     regex_post_2016 = "\w+/\w+/\d+/\d+/\d+"
@@ -129,7 +138,7 @@ def extract_lines(txt_files):
 
             # determine the year IOT handle the format
             # take as the mode of all 4 digit numbers
-            format = get_format(txt_file, dump)
+            format = get_format(txt_file)
 
             # find outbreak lines by regex,
             # depending on the year
@@ -138,22 +147,16 @@ def extract_lines(txt_files):
             elif format == 'pre_2016':
                 outbreaks_raw += re.findall(regex_pre_2016,dump)
 
-def fileList(source):
-    matches = []
-    for root, dirnames, filenames in os.walk(source):
-        for filename in filenames:
-            if filename.endswith(('.txt')):
-                matches.append(os.path.join(root, filename))
-    return matches
+    return outbreaks_raw
 
 
 if __name__ == '__main__':
     # load a list of file names
-    source = sys.argv[0]
+    source = sys.argv[1]
 
     # walk the directory taking the txt txt_files
-    txt_files = filelist(source)
-
+    txt_files = list_files(source)
+    print(txt_files.__len__())
     # extract individual outbreak reports
     outbreaks_raw = extract_outbreaks(txt_files)
     print("total number of outbreaks", outbreaks_raw.__len__())
