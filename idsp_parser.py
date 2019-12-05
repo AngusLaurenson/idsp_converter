@@ -38,10 +38,6 @@ with open('err_log.txt','w') as f:
 # error tracking dict()
 errors = {"state":0,"disease":0,"parsing_error":0,"unknown_year":0}
 
-# use regex to get only the essential information
-regex_post_2016 = "\w+/\w+/\d+/\d+/\d+"
-regex_pre_2016 = "(\d\.\s\w.*?)(?=\d\.\s)"
-
 def fuzzy_match(hypotheses, target):
     # returns the hypothesis which best matches the target
     match = []
@@ -103,32 +99,29 @@ def outbreak_parser(outbreak):
 
     return [ID_code, state, district, disease, cases, deaths, year, start_date, report_date, status, comments, raw_string]
 
-def get_file_year(fname, dump):
-    # a function to obtain the
-    try:
-        # try file name, should work on pre 2016 files
-        year_tail = list(re.find('(?=\w)wkd{2}(?<=\w)'))[0]
-        year = '20'+year_tail
-    except:
-        # try contents
-        try:
-            # take most common 4 number string
-            years = list(re.findall("\d{4}",dump))
-            year = max(set(years), key=years.count)
-        except:
-            # place '?' if year undetected
-            errors['unknown_year'] += 1
-            year = '?'
-    return year
+
+def get_format(fname, dump):
+    # a function to obtain the epoch
+
+    if 'pre_2016' in fname:
+        return 'pre_2016'
+
+    elif 'post_2016' in fname:
+        return 'post_2016'
+
+    else:
+        return 1
 
 
-if __name__ == '__main__':
-    # load a list of file names
-    txt_files = sys.argv[:]
+def extract_lines(txt_files):
 
-    # create a list of strings, one for each outbreak
-    # input string is broken up by matching the ID field
+    # use regex to get only the essential information
+    regex_post_2016 = "\w+/\w+/\d+/\d+/\d+"
+    regex_pre_2016 = "(\d\.\s\w.*?)(?=\d\.\s)"
+
+    # list of outbreaks
     outbreaks_raw = []
+
     for txt_file in tqdm(txt_files[:]):
         with open(txt_file,"r") as f:
             dump = f.read()
@@ -136,17 +129,36 @@ if __name__ == '__main__':
 
             # determine the year IOT handle the format
             # take as the mode of all 4 digit numbers
-            year = get_file_year(txt_file, dump)
+            format = get_format(txt_file, dump)
 
             # find outbreak lines by regex,
             # depending on the year
-            if float(year) >= 2016:
+            if format == 'post_2016':
                 outbreaks_raw += re.findall(f"{regex_post_2016}.*?(?={regex_post_2016})",dump)
-            else:
+            elif format == 'pre_2016':
                 outbreaks_raw += re.findall(regex_pre_2016,dump)
 
+def fileList(source):
+    matches = []
+    for root, dirnames, filenames in os.walk(source):
+        for filename in filenames:
+            if filename.endswith(('.txt')):
+                matches.append(os.path.join(root, filename))
+    return matches
 
+
+if __name__ == '__main__':
+    # load a list of file names
+    source = sys.argv[0]
+
+    # walk the directory taking the txt txt_files
+    txt_files = filelist(source)
+
+    # extract individual outbreak reports
+    outbreaks_raw = extract_outbreaks(txt_files)
     print("total number of outbreaks", outbreaks_raw.__len__())
+
+    # process individual outbreak reports to extract data
 
     # try and create a dictionary of {state : [districts,]}
     # for finding the districts.
