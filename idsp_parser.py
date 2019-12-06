@@ -37,7 +37,13 @@ with open('err_log.txt','w') as f:
     f.write('# amateur log files for parsing errors')
 
 # error tracking dict()
-errors = {"state":0,"disease":0,"parsing_error":0,"unknown_year":0}
+errors = {
+    "state":0,
+    "disease":0,
+    "parsing_error":0,
+    "unknown_year":0,
+    'epoch_error':0
+}
 
 def fuzzy_match(hypotheses, target):
     # returns the hypothesis which best matches the target
@@ -114,7 +120,7 @@ def get_format(fname):
         return 1
 
 def list_files(source):
-    # works
+    # get all txt files within source dir tree
     matches = []
     for root, dirnames, filenames in os.walk(source):
         for filename in filenames:
@@ -122,49 +128,86 @@ def list_files(source):
                 matches.append(os.path.join(root, filename))
     return matches
 
-def extract_outbreaks(txt_files):
+def extract_post_2016_outbreaks(txt_file):
+    # get a list of all outbreaks in text file
+    # only for post 2016 data files
 
-    # use regex to get only the essential information
+    # regex to detect ID code format for delimitng
     regex_post_2016 = "\w+/\w+/\d+/\d+/\d+"
-    regex_pre_2016 = "(\d\.\s\w.*?)(?=\d\.\s)"
 
-    # list of outbreaks
-    outbreaks_raw = []
+    # open file and dump contents
+    with open(txt_file,"r") as f:
+        dump = f.read()
+        dump = dump.replace("\n"," ")
 
-    for txt_file in tqdm(txt_files[:]):
-        with open(txt_file,"r") as f:
-            dump = f.read()
-            dump = dump.replace("\n"," ")
+    # list of outbreaks, delimited by the ID code regex
+    outbreaks = re.findall(f"{regex_post_2016}.*?(?={regex_post_2016})",dump)
 
-            # determine the year IOT handle the format
-            # take as the mode of all 4 digit numbers
-            format = get_format(txt_file)
+    return outbreaks
 
-            # find outbreak lines by regex,
-            # depending on the year
-            if format == 'post_2016':
-                outbreaks_raw += re.findall(f"{regex_post_2016}.*?(?={regex_post_2016})",dump)
-            elif format == 'pre_2016':
-                outbreaks_raw += re.findall(regex_pre_2016,dump)
+def extract_pre_2016_outbreaks(txt_file):
+    # get a list of all outbreaks in text file
+    # only for pre 2016 data files
+    # bit ropey but should work
 
-    return outbreaks_raw
+    # open the file and dump contents
+    with open(txt_file) as f:
+        dump = f.read()
+        dump = dump.replace('\n',' ')
 
+    # split in the centre as this is only reliable handle
+    cases_deaths_date = re.findall('\d+[\s/]\d+\s\d{2}.\d{2}.\d{2}',dump)
+    dislocated_records = re.split('\d+[\s/]\d+\s\d{2}.\d{2}.\d{2}',dump)
+
+    outbreaks = []
+    for i, record in enumerate(cases_deaths_date):
+
+        # first 7 words left of the numerical data
+        # should contain state district and disease
+        front = ' '.join(dislocated_records[i].split(' ')[-7:])
+        centre = record
+
+        # just grab the whole next bit,
+        # rear isn't so important
+        rear = dislocated_records[i+1]
+
+        outbreaks.append(' '.join((front,centre,rear)))
+
+    return outbreaks
 
 if __name__ == '__main__':
     # load a list of file names
     source = sys.argv[1]
 
     # walk the directory taking the txt txt_files
-    txt_files = list_files(source)
-    print(txt_files.__len__())
-    # extract individual outbreak reports
-    outbreaks_raw = extract_outbreaks(txt_files)
-    print("total number of outbreaks", outbreaks_raw.__len__())
+    text_files = list_files(source)
+    print(text_files.__len__())
 
-    # process individual outbreak reports to extract data
+    # Build a list of outbreak strings
+    outbreak_master = []
 
-    # try and create a dictionary of {state : [districts,]}
-    # for finding the districts.
+    # diagnostic count of pre pre_2016
+    pre_2016_count = 0
+
+    for text_file in text_files:
+
+        epoch = get_format(text_file)
+
+        if epoch == 'post_2016':
+            outbreak_master += extract_post_2016_outbreaks(text_file)
+        elif epoch == 'pre_2016':
+            data = extract_pre_2016_outbreaks(text_file)
+            pre_2016_count += len(data)
+            outbreak_master += data
+        else:
+            errors['epoch_error'] += 1
+
+    print("total number of outbreaks", outbreak_master.__len__())
+    print("number of pre2016 outbreaks", pre_2016_count)
+    print("number of post2016 outbreaks", outbreak_master.__len__()-pre_2016_count)
+
+    # parse all the outbreaks strings
+    # to create a useable dataframe
 
     IND_2 = gpd.read_file("gadm36_IND_2.shp")
 
@@ -185,7 +228,7 @@ if __name__ == '__main__':
     # and all the data fields as columns
     outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "year", "start_date", "report_date", "status", "comments", "raw"])
 
-    for i, raw in enumerate(tqdm(outbreaks_raw)):
+    for i, raw in enumerate(tqdm(outbreak_master)):
         # this part accumulates a significant number of errors
         # I think outbreak_parser is failing?
         try:
