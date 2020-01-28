@@ -1,12 +1,10 @@
 Acute Diarrheal Disease
-Acute Diarrhoeal Disease
 Acute Encephalitis Syndrome
 Acute Flaccid Paralysis
 Acute Respiratory Infection
 Any Other State Specific Disease
 Bacillary Dysentery
 Chicken Pox
-Chickenpox
 Chikungunya
 Dengue
 Diphtheria
@@ -21,12 +19,6 @@ Pertussis
 Pneumonia
 Snake Bite
 Unusual Syndromes Not Captured Above
-Hepatitis
-Hepatitis A
-Hepatitis B
-Hepatitis C
-Hepatitis D
-Hepatitis E
 Viral Hepatitis
 Food Poisoning
 Cholera

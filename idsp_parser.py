@@ -11,23 +11,20 @@ KNOWN ISSUES:
 
     Outbreaks not accurately found in pre 2016 files due to lack of consistent formatting. A rethink on the outbreak finding routine is necessary.
 
-    Followup reporting. Don't know what the impact, meaning or solution to follow up reports. Can use df.duplicated()
+    Followup reporting. Don't know what the impact, meaning or solution to follow up reports.
 
     Wild card diseases which aren't on the initial list are not found
 
     Dates are spelt differently so some slip through the gaps. This gap has been closed most of the way.
 
 
-Wishlist:
-
-    pdftotext within this program
-
-    Add field for the file from which the data was taken.
+Wishlist: pdftotext within this program,
 
 Notes: SOPs for strings is capitalised words as in .title() string method. Lead taken from the datasets themselves.
 """
 
 from fuzzywuzzy import fuzz
+from datetime import datetime
 import geopandas as gpd
 import pandas as pd
 import re
@@ -44,7 +41,7 @@ errors = {
     "disease":0,
     "parsing_error":0,
     "unknown_year":0,
-    'epoch_error':0,
+    'epoch_error':0
 }
 
 def fuzzy_match(hypotheses, target):
@@ -69,15 +66,9 @@ def outbreak_parser(outbreak):
     ID_code, state, district, disease, cases, deaths, start_date, report_date, status, comments = "?"*10
 
     # easy to locate fields
-    # ID_code = outbreak.split(" ")[0]
+    ID_code = outbreak.split(" ")[0]
     try:
-        ID_code = re.findall('\w+/\w+/\d+/\d+/\d+', outbreak)[0]
-    except:
-        # pre 2016 don't have id codes
-        pass
-
-    try:
-        status = re.findall("Under \w+",outbreak)[0]
+        status = re.findall("Under \w+",outbreak)
         comments = re.findall("((?<="+status+").*)", outbreak)
     except:
         pass
@@ -87,18 +78,17 @@ def outbreak_parser(outbreak):
 
     try:
         # replace to help later to_datetime()
-        start_date = dates[0].replace('/','-').replace('.','-')
+        start_date = dates[0].replace('/','-')
     except:
         pass
     try:
-        report_date = dates[1].replace('/','-').replace('.','-')
+        report_date = dates[1]
     except:
         pass
 
     try:
-        cases, deaths = re.findall("(?<=\s)\d+[\*\s/\.-]+\d+(?=\*?\s)",outbreak)[0].split(" ")
+        cases, deaths = re.findall("(?<=\s)\d+\*?[\s/\.-]\d+\*?(?=\s)",outbreak)[0].split(" ")
     except:
-
         pass
 
     # use a fuzzy match to robustly get state
@@ -141,13 +131,9 @@ def list_files(source):
                 matches.append(os.path.join(root, filename))
     return matches
 
-<<<<<<< Updated upstream
 def extract_post_2016_outbreaks(txt_file):
     # get a list of all outbreaks in text file
     # only for post 2016 data files
-=======
-def extract_outbreaks(txt_files):
->>>>>>> Stashed changes
 
     # regex to detect ID code format for delimitng
     regex_post_2016 = "\w+/\w+/\d+/\d+/\d+"
@@ -160,7 +146,6 @@ def extract_outbreaks(txt_files):
     # list of outbreaks, delimited by the ID code regex
     outbreaks = re.findall(f"{regex_post_2016}.*?(?={regex_post_2016})",dump)
 
-<<<<<<< Updated upstream
     return outbreaks
 
 def extract_pre_2016_outbreaks(txt_file):
@@ -174,37 +159,11 @@ def extract_pre_2016_outbreaks(txt_file):
         dump = dump.replace('\n',' ')
 
     # split in the centre as this is only reliable handle
-    cases_deaths_date = re.findall('\d+[\s/\*]+\d+\s\d{2}.\d{2}.\d{2}',dump)
-    dislocated_records = re.split('\d+[\s/\*]+\d+\s\d{2}.\d{2}.\d{2}',dump)
-
-    # regex_post_2016 = r'''((\d+[\s/\.\*-]+){2}(\d{2}|\d{st|nd|rd})[\s/\.\*-]+(\d{2}|\w+)[\s/\.\*-]+(\d{4}|\d{2}))'''
-    #
-    # cases_deaths_date = [x[0] for x in re.findall(regex_post_2016,dump)]
-    # dislocated_records = re.split(regex_post_2016,dump)
-
+    cases_deaths_date = re.findall('\d+\s\/?\s?\d+\s\d{2}.\d{2}.\d{2}',dump)
+    dislocated_records = re.split('\d+\s\/?\s?\d+\s\d{2}.\d{2}.\d{2}',dump)
 
     outbreaks = []
     for i, record in enumerate(cases_deaths_date):
-=======
-            # determine the year IOT handle the format
-            # take as the mode of all 4 digit numbers
-            format = get_format(txt_file, dump)
-            print(format)
-            # find outbreak lines by regex,
-            # depending on the year
-            if format == 'post_2016':
-                outbreaks_raw += re.findall(f"{regex_post_2016}.*?(?={regex_post_2016})",dump)
-            elif format == 'pre_2016':
-                outbreaks_raw += re.findall(regex_pre_2016,dump)
-
-def list_files(source):
-    matches = []
-    for root, dirnames, filenames in os.walk(source):
-        for filename in filenames:
-            if filename.endswith(('.txt')):
-                matches.append(os.path.join(root, filename))
-    return matches
->>>>>>> Stashed changes
 
         # first 7 words left of the numerical data
         # should contain state district and disease
@@ -224,7 +183,6 @@ if __name__ == '__main__':
     source = sys.argv[1]
 
     # walk the directory taking the txt txt_files
-<<<<<<< Updated upstream
     text_files = list_files(source)
     print(text_files.__len__())
 
@@ -235,13 +193,6 @@ if __name__ == '__main__':
     pre_2016_count = 0
 
     for text_file in text_files:
-=======
-    txt_files = list_files(source)
-    print(txt_files.__len__())
-    # extract individual outbreak reports
-    outbreaks_raw = extract_outbreaks(txt_files)
-    print("total number of outbreaks", outbreaks_raw.__len__())
->>>>>>> Stashed changes
 
         epoch = get_format(text_file)
 
@@ -278,10 +229,22 @@ if __name__ == '__main__':
 
     # Create a dataframe which contains all the outbreaks as rows
     # and all the data fields as columns
-    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "report_date", "status", "comments", "raw", "file_name"])
+    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "report_date", "status", "comments", "raw"])
 
     for i, raw in enumerate(tqdm(outbreak_master)):
+        # this part accumulates a significant number of errors
+        # I think outbreak_parser is failing?
         outbreaks.loc[i] = outbreak_parser(raw)
+
+        # try:
+        #     outbreaks.loc[i] = outbreak_parser(raw)
+        # except:
+        #     # print(outbreak_parser(raw))
+        #     errors['parsing_error'] += 1
+        #     with open('err_log.txt','r+') as err_log:
+        #         err_log.write(' '.join(['parse_failure',str(i),raw,'\n']))
+        # finally:
+        #     pass
 
     # report the number of reports that we failed to read
     for key in errors.keys():
