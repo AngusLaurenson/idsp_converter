@@ -67,8 +67,11 @@ def outbreak_parser(outbreak):
 
     # easy to locate fields
     ID_code = outbreak.split(" ")[0]
-    status = re.findall("Under \w+",outbreak)[0]
-    comments = re.findall("((?<="+status+").*)", outbreak)[0]
+    try:
+        status = re.findall("Under \w+",outbreak)
+        comments = re.findall("((?<="+status+").*)", outbreak)
+    except:
+        pass
 
     # start stop dates
     dates = re.findall("(?<=\s)\d+\s?.?[/\.-][\s.]?\d+.?[/\.-]\d+", outbreak)
@@ -156,8 +159,8 @@ def extract_pre_2016_outbreaks(txt_file):
         dump = dump.replace('\n',' ')
 
     # split in the centre as this is only reliable handle
-    cases_deaths_date = re.findall('\d+[\s/]\d+\s\d{2}.\d{2}.\d{2}',dump)
-    dislocated_records = re.split('\d+[\s/]\d+\s\d{2}.\d{2}.\d{2}',dump)
+    cases_deaths_date = re.findall('\d+\s\/?\s?\d+\s\d{2}.\d{2}.\d{2}',dump)
+    dislocated_records = re.split('\d+\s\/?\s?\d+\s\d{2}.\d{2}.\d{2}',dump)
 
     outbreaks = []
     for i, record in enumerate(cases_deaths_date):
@@ -209,7 +212,7 @@ if __name__ == '__main__':
     # parse all the outbreaks strings
     # to create a useable dataframe
 
-    IND_2 = gpd.read_file("gadm36_IND_2.shp")
+    IND_2 = gpd.read_file("/data/datasets/Projects/PODCAST/country_district_shape_files/INDIA/gadm36_IND_2.shp")
 
     state_district_dict = {}
     for d in IND_2[['NAME_1','NAME_2']].values:
