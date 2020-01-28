@@ -11,6 +11,8 @@ KNOWN ISSUES:
 
     Outbreaks not accurately found in pre 2016 files due to lack of consistent formatting. A rethink on the outbreak finding routine is necessary.
 
+    Year finding routine doesn't work. Always returns 2016
+
     Followup reporting. Don't know what the impact, meaning or solution to follow up reports.
 
     Wild card diseases which aren't on the initial list are not found
@@ -24,7 +26,6 @@ Notes: SOPs for strings is capitalised words as in .title() string method. Lead 
 """
 
 from fuzzywuzzy import fuzz
-from datetime import datetime
 import geopandas as gpd
 import pandas as pd
 import re
@@ -57,7 +58,6 @@ def fuzzy_match(hypotheses, target):
     return match[-1][-1]
 
 def outbreak_parser(outbreak):
-    # issues with leaving types unconverted.
 
     # for validation, include raw outbreak line
     raw_string = outbreak
@@ -67,11 +67,8 @@ def outbreak_parser(outbreak):
 
     # easy to locate fields
     ID_code = outbreak.split(" ")[0]
-    try:
-        status = re.findall("Under \w+",outbreak)
-        comments = re.findall("((?<="+status+").*)", outbreak)
-    except:
-        pass
+    status = re.findall("Under \w+",outbreak)[0]
+    comments = re.findall("((?<="+status+").*)", outbreak)[0]
 
     # start stop dates
     dates = re.findall("(?<=\s)\d+\s?.?[/\.-][\s.]?\d+.?[/\.-]\d+", outbreak)
@@ -107,7 +104,7 @@ def outbreak_parser(outbreak):
             disease = d
             break
 
-    return [ID_code, state, district, disease, cases, deaths,  start_date, report_date, status, comments, raw_string]
+    return [ID_code, state, district, disease, cases, deaths, year, start_date, report_date, status, comments, raw_string]
 
 
 def get_format(fname):
@@ -159,8 +156,8 @@ def extract_pre_2016_outbreaks(txt_file):
         dump = dump.replace('\n',' ')
 
     # split in the centre as this is only reliable handle
-    cases_deaths_date = re.findall('\d+\s\/?\s?\d+\s\d{2}.\d{2}.\d{2}',dump)
-    dislocated_records = re.split('\d+\s\/?\s?\d+\s\d{2}.\d{2}.\d{2}',dump)
+    cases_deaths_date = re.findall('\d+[\s/]\d+\s\d{2}.\d{2}.\d{2}',dump)
+    dislocated_records = re.split('\d+[\s/]\d+\s\d{2}.\d{2}.\d{2}',dump)
 
     outbreaks = []
     for i, record in enumerate(cases_deaths_date):
@@ -229,22 +226,20 @@ if __name__ == '__main__':
 
     # Create a dataframe which contains all the outbreaks as rows
     # and all the data fields as columns
-    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "start_date", "report_date", "status", "comments", "raw"])
+    outbreaks = pd.DataFrame(columns = ["ID_code", "state", "district", "disease", "cases", "deaths", "year", "start_date", "report_date", "status", "comments", "raw"])
 
     for i, raw in enumerate(tqdm(outbreak_master)):
         # this part accumulates a significant number of errors
         # I think outbreak_parser is failing?
-        outbreaks.loc[i] = outbreak_parser(raw)
-
-        # try:
-        #     outbreaks.loc[i] = outbreak_parser(raw)
-        # except:
-        #     # print(outbreak_parser(raw))
-        #     errors['parsing_error'] += 1
-        #     with open('err_log.txt','r+') as err_log:
-        #         err_log.write(' '.join(['parse_failure',str(i),raw,'\n']))
-        # finally:
-        #     pass
+        try:
+            outbreaks.loc[i] = outbreak_parser(raw)
+        except:
+            # print(outbreak_parser(raw))
+            errors['parsing_error'] += 1
+            with open('err_log.txt','r+') as err_log:
+                err_log.write(' '.join(['parse_failure',str(i),raw,'\n']))
+        finally:
+            pass
 
     # report the number of reports that we failed to read
     for key in errors.keys():
