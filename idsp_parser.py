@@ -84,7 +84,7 @@ def outbreak_parser(outbreak):
         pass
 
     try:
-        cases, deaths = re.findall("(?<=\s)\d+\*?[\s/\.-]\d+\*?(?=\s)",outbreak)[0].split(" ")
+        cases, deaths = re.findall("(?<=\s)\d+\*?\s?[\s/\.-]\s?\d+\*?(?=\s)",outbreak)[0].replace("/ ","").split(" ")
     except:
         pass
 
