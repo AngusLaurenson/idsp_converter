@@ -17,6 +17,8 @@ KNOWN ISSUES:
 
     Dates are spelt differently so some slip through the gaps. This gap has been closed most of the way.
 
+    Extraction of locations and disease fails for pre 2016 when record overlaps occur (which is often). The centre of the record is found first, so look only to the left for the location and diseese.
+
 
 Wishlist: pdftotext within this program,
 
@@ -42,17 +44,48 @@ errors = {
     'epoch_error':0
 }
 
+
+IND_2 = gpd.read_file("/data/datasets/Projects/PODCAST/country_district_shape_files/INDIA/gadm36_IND_2.shp")
+
+state_district_dict = {}
+for d in IND_2[['NAME_1','NAME_2']].values:
+    # built a dictionary of lists
+    # keys are states, values are its districts
+    try:
+        state_district_dict[d[0]].append(d[-1])
+    except:
+        state_district_dict[d[0]] = [d[-1]]
+
+district_state_dict = {}
+for d in IND_2[['NAME_1','NAME_2']].values:
+    district_state_dict[d[1]] = d[0]
+
+district_names = set(IND_2.NAME_2)
+state_names = set(IND_2.NAME_1)
+
+
+def quick_match(hypotheses, target):
+    for h in hypotheses:
+        if h in target:
+            return h
+
 def fuzzy_match(hypotheses, target):
     # returns the hypothesis which best matches the target
     match = []
 
     # build a list of (score, state) tuples
     for h in hypotheses:
-        match.append((fuzz.token_set_ratio(h,target), h))
+        match.append((fuzz.partial_ratio(h,target), h))
 
     # sort the list of tuples to take the state with highest score
     match.sort()
     return match[-1][-1]
+
+def layered_match(hypotheses, target):
+    try:
+        return quick_match()
+    except:
+        return fuzzy_match(hypotheses, target)
 
 def outbreak_parser(outbreak):
 
@@ -88,24 +121,35 @@ def outbreak_parser(outbreak):
     except:
         pass
 
-    # use a fuzzy match to robustly get state
-    state = fuzzy_match(state_district_dict.keys(), outbreak)
+    # break the record into pre and post cases if possible
+    # this should help correctly identify with
+    try:
+        # split by cases deaths
+        front, back = re.split("(?<=\s)\d+\*?\s?[\s/\.-]\s?\d+\*?(?=\s)",outbreak)[:]
 
-    # search only the districts within the state
-    district = fuzzy_match(state_district_dict[state], outbreak)
+        # start of record sometime preceeded by number period i.e. 1. or 7.
+        # crop the front down by ignoring the characters before this pattern
+        try:
+            front = re.split("\d\.")[1]
+        except:
+            pass
 
-    # IDSP doctrine gives investigators freedom to record
-    # diseases which they deem important. Therefore a
-    # comprehensive list of diseases is impossible.
-    # However we are interested in Cholera not rare wildcards
 
-    for d in disease_names:
-        if d in outbreak:
-            disease = d
-            break
+        disease = layered_match(disease_names, front)
+
+        # state not always available. District usually is
+        district = layered_match(district_names, front)
+
+        # only certain states have duplicated districts
+        if district != 'Aurangabad':
+            state = district_state_dict[district]
+        else:
+            state = layered_match(['Bihar','Maharashtra'], front)
+
+    except:
+        pass
 
     return [ID_code, state, district, disease, cases, deaths, start_date, report_date, status, comments, raw_string]
-
 
 def get_format(fname):
     # a function to obtain the epoch
