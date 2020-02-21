@@ -133,7 +133,7 @@ def append_tables(all_tables):
 if __name__ == '__main__':
 
     # create a generator of csv files to be parsed
-    table_gen = map(try_read_pdf, tqdm(pdfs[::52]))
+    table_gen = map(try_read_pdf, tqdm(pdfs[::]))
 
     headers = [
         'unique_id',
